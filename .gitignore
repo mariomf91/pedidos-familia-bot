@@ -1,0 +1,7 @@
+# Artefactos generados: llevan dentro el token real al construirse
+workflow-pedidos.json
+diag-pipeline.json
+
+# Sistema
+.DS_Store
+Thumbs.db
