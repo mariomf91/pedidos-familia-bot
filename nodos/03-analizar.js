@@ -57,7 +57,15 @@ if (html) {
     } catch (e) { /* bloque corrupto: al siguiente */ }
   }
 
-  // 2) Marcadores directos de Amazon (página móvil)
+  // 2) <title> genérico: sirve para cualquier tienda. Verificado con
+  //    enlaces de cesta compartida de Zara Home (basketShare), que sí
+  //    devuelven la página real aunque la home esté tras página-valla.
+  if (!titulo) {
+    const t = html.match(/<title[^>]*>([^<]{1,300})</i);
+    if (t) titulo = t[1].replace(/\s+/g, ' ').trim();
+  }
+
+  // 3) Marcadores directos de Amazon (página móvil)
   if (esAmazon) {
     if (!titulo) {
       const t = html.match(/<title[^>]*>([^<]{1,300})</i);
@@ -82,10 +90,14 @@ if (html) {
   }
 }
 
-// Título de Amazon: quitar el sufijo " : Amazon.es: …" y acortar para
-// que la ficha siga siendo compacta. Precio: normalizar a "9,84 €".
+// Limpieza del título: sufijo de Amazon y sufijos de marca genéricos
+// ("Cesta de la compra | Zara Home España" → "Cesta de la compra").
 if (titulo) {
   titulo = titulo.replace(/\s*[:|-]\s*Amazon\.es.*$/i, '').trim();
+  if (!esAmazon && titulo.includes(' | ')) {
+    const primera = titulo.split(' | ')[0].trim();
+    if (primera.length >= 8) titulo = primera;
+  }
   if (titulo.length > 90) titulo = titulo.slice(0, 90).trimEnd() + '…';
 }
 if (precio) {

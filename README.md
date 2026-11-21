@@ -182,13 +182,17 @@ resuelve el redirect en dos pasos.
 - **No guarda tu tarjeta, tu dirección ni tu sesión de Amazon.** En
   ninguna parte. Para las demás webs: el autofill de tu navegador.
 - **No usa ningún LLM.** Determinista de punta a punta.
-- **Otras tiendas (Zara Home…)**: su anti-bot impide leer la página —
-  verificado contra `zarahome.com` desde el servidor: responde 200 con
-  una página-valla de 2,1 KB en vez de la web real. La ficha sale sin
-  título ni precio, pero el enlace y el flujo funcionan igual, y la vista
-  previa de Telegram suele mostrar el producto. Es el modo degradado
-  previsto; otras tiendas sin anti-bot agresivo sí salen con ficha
-  completa vía JSON-LD.
+- **Otras tiendas (Zara Home…)**: dos comportamientos verificados contra
+  `zarahome.com` desde el servidor. Los enlaces de **cesta compartida**
+  (`shareReference`, lo que la app manda al usar "compartir carrito") sí
+  devuelven la página real (1,65 MB): la ficha sale con su título
+  (*"Cesta de la compra"*) y al abrirla en el navegador, la cesta de quien
+  la comparte se carga entera en tu carrito — ideal para este caso de
+  uso. Las páginas de producto y la home, en cambio, quedan tras una
+  página-valla anti-bot de 2,1 KB: ficha sin título ni precio, pero el
+  enlace y el flujo funcionan igual (y la vista previa de Telegram suele
+  mostrar el producto). Otras tiendas sin anti-bot agresivo sí salen con
+  ficha completa vía JSON-LD.
 
 ## Estructura del repositorio
 
