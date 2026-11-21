@@ -84,6 +84,14 @@ let offset = typeof sd.offset === 'number' ? sd.offset : 0;
 for (const u of r.result) {
   if (typeof u.update_id === 'number') offset = Math.max(offset, u.update_id + 1);
 
+  // Dedupe general por update_id: cubre re-entregas y carreras entre
+  // ejecuciones solapadas (parcial pero gratis; el offset convergen).
+  if (!Array.isArray(sd.vistos)) sd.vistos = [];
+  const idVisto = String(u.update_id);
+  if (sd.vistos.includes(idVisto)) continue;
+  sd.vistos.push(idVisto);
+  if (sd.vistos.length > 200) sd.vistos = sd.vistos.slice(-200);
+
   // ---------- Mensajes ----------
   const m = u.message;
   if (m && m.chat) {

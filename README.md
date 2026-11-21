@@ -77,7 +77,7 @@ lo pidió. Si olvidas el 📦 no pasa nada: el pedido queda simplemente como
 
 | Nodo | Qué hace |
 |---|---|
-| Cada 30 segundos | Sondeo `getUpdates` (sin webhook: la instancia no es pública) |
+| Cada 20 segundos | Sondeo `getUpdates` con **espera larga de 12 s** (long polling): Telegram retiene la conexión y entrega las novedades al instante — contestación en ~1-2 s en la mayoría de los casos. Sin webhook: la instancia no es pública |
 | Sondeo | Arranque del ciclo: offset + limpieza de registros viejos |
 | Leer novedades | HTTP → hasta 50 novedades |
 | Encaminar | El cerebro: clasifica mensajes y botones, pregunta las unidades, responde, registra, deduplica callbacks |
