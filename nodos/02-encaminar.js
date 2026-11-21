@@ -43,6 +43,9 @@ const tecladoPedido = (pid) => ({ inline_keyboard: [[
 const tecladoComprado = (pid) => ({ inline_keyboard: [[
   { text: '📦 Comprado', callback_data: 'c:' + pid },
 ]] });
+const tecladoCantidad = (pid) => ({ inline_keyboard: [
+  [1, 2, 3, 4, 5].map((n) => ({ text: String(n), callback_data: 'q:' + pid + ':' + n })),
+] });
 
 const AYUDA =
   'Soy el bot de pedidos de la familia 👋\n\n' +
@@ -55,7 +58,7 @@ const AYUDA =
 const filaLog = (l) => {
   const d = new Date(l.ts).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
   return '#' + l.pid + ' · ' + d + ' · ' + (l.titulo || l.nota || '?') +
-    (l.precio ? ' (' + l.precio + ')' : '') + ' · ' + l.estado;
+    (l.precio ? ' (' + l.precio + ')' : '') + (l.cantidad > 1 ? ' ×' + l.cantidad : '') + ' · ' + l.estado;
 };
 
 // ---- Entrada: respuesta de getUpdates ----
@@ -150,8 +153,16 @@ for (const u of r.result) {
       // en un contexto de shell): sin comillas, $, ; ni & interpretables.
       urlSondeo = urlSondeo.replace(/[^A-Za-z0-9\-._~:\/?#\[\]@!*+,=%]/g, (c) =>
         '%' + c.charCodeAt(0).toString(16).padStart(2, '0').toUpperCase());
-      enviar(chatId, 'Anotado ✓ (n.º ' + pid + '). Se lo paso a Mario 📨');
-      enlaces.push({ json: { op: 'link', pid, url: urlSondeo, urlOriginal, nota, quien: nombre, chatId } });
+
+      // Se pregunta la cantidad ANTES de generar la ficha: la respuesta
+      // dispara la lectura de la página. Si nadie contesta en 10 minutos,
+      // el ciclo lo procesa como 1 unidad sin confirmar.
+      sd.pendientes[pid] = {
+        pid, quien: nombre, chatId,
+        url: urlSondeo, urlOriginal, nota,
+        estado: 'cantidad', ts: Date.now(),
+      };
+      enviar(chatId, 'Anotado ✓ (n.º ' + pid + '). ¿Cuántas unidades quieres?', tecladoCantidad(pid));
     } else {
       sd.pendientes[pid] = {
         pid, tipo: 'texto', quien: nombre, chatId, nota: texto,
@@ -176,8 +187,33 @@ for (const u of r.result) {
     if (sd.cbVistos.length > 60) sd.cbVistos = sd.cbVistos.slice(-60);
     contestarCB(cb.id);
     const fromId = String((cb.from && cb.from.id) != null ? cb.from.id : '');
-    const par = String(cb.data || '').match(/^([pxc]):(\d+)$/);
-    if (!ADMIN || fromId !== ADMIN || !par) continue;
+    const par = String(cb.data || '').match(/^([pxcq]):(\d+)(?::(\d+))?$/);
+    if (!par) continue;
+
+    // "¿Cuántas unidades?" lo contesta quien pidió (la familia), no solo
+    // Mario: la respuesta dispara la lectura de la página del producto.
+    if (par[1] === 'q') {
+      const esFamiliaCB = (!!ADMIN && fromId === ADMIN) || sd.whitelist.includes(fromId);
+      if (!esFamiliaCB) continue;
+      const pq = sd.pendientes[par[2]];
+      if (!pq || pq.estado !== 'cantidad') continue;
+      const n = Math.max(1, Math.min(5, parseInt(par[3] || '1', 10)));
+      pq.cantidad = n;
+      pq.estado = 'pendiente';
+      pq.tsAccion = Date.now();
+      if (cb.message && cb.message.chat) {
+        quitarBotones(String(cb.message.chat.id), cb.message.message_id);
+      }
+      enviar(pq.chatId, '✅ ' + n + (n === 1 ? ' unidad' : ' unidades') + '. Se lo paso a Mario 📨');
+      enlaces.push({ json: {
+        op: 'link', pid: pq.pid, url: pq.url, urlOriginal: pq.urlOriginal,
+        nota: pq.nota || '', quien: pq.quien, chatId: pq.chatId, cantidad: n,
+      } });
+      continue;
+    }
+
+    // Los botones de compra/pasar/cerrar solo puede pulsarlos Mario.
+    if (!ADMIN || fromId !== ADMIN) continue;
 
     const pid = par[2];
     const letra = par[1];
@@ -212,6 +248,9 @@ for (const u of r.result) {
       } else {
         linea = '🛍️ <a href="' + escHref(p.url) + '">abrir producto</a> → tu navegador rellena el resto';
       }
+      if (p.cantidad && p.cantidad > 1) {
+        linea += '\n🔢 Son ' + p.cantidad + ' unidades.';
+      }
       // El marcador 🔍 (cola del id de callback + hora del tick) es
       // temporal para pruebas: si sale doble, mismos números y misma hora
       // = un envío duplicado; misma id y horas distintas = reproceso.
@@ -220,17 +259,34 @@ for (const u of r.result) {
     } else if (letra === 'x') {
       p.estado = 'pasado';
       sd.log.push({ ts: Date.now(), pid, quien: p.quien, titulo: p.titulo || '', nota: p.nota || '',
-        precio: p.precio || '', asin: p.asin || '', estado: 'pasado' });
+        precio: p.precio || '', asin: p.asin || '', cantidad: p.cantidad || 1, estado: 'pasado' });
       delete sd.pendientes[pid];
       enviar(p.chatId, 'Visto ✓. Mario te escribe en un rato 💬 (n.º ' + pid + ')');
     } else {
       p.estado = 'comprado';
       sd.log.push({ ts: Date.now(), pid, quien: p.quien, titulo: p.titulo || '', nota: p.nota || '',
-        precio: p.precio || '', asin: p.asin || '', estado: 'comprado' });
+        precio: p.precio || '', asin: p.asin || '', cantidad: p.cantidad || 1, estado: 'comprado' });
       delete sd.pendientes[pid];
       enviar(p.chatId, '🎉 ¡Hecho! Mario ya lo ha comprado (n.º ' + pid + ').');
     }
     continue;
+  }
+}
+
+// Pedidos que se quedaron sin contestar el "¿cuántas unidades?": a los
+// 10 minutos se procesan como 1 unidad sin confirmar, para que ningún
+// pedido se quede frito esperando una respuesta que no llega.
+const hace10 = Date.now() - 10 * 60000;
+for (const pidVencido of Object.keys(sd.pendientes)) {
+  const pv = sd.pendientes[pidVencido];
+  if (pv.estado === 'cantidad' && pv.ts < hace10) {
+    pv.cantidad = 1;
+    pv.estado = 'pendiente';
+    enlaces.push({ json: {
+      op: 'link', pid: pv.pid, url: pv.url, urlOriginal: pv.urlOriginal,
+      nota: pv.nota || '', quien: pv.quien, chatId: pv.chatId,
+      cantidad: 1, sinConfirmar: true,
+    } });
   }
 }
 

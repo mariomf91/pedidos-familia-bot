@@ -31,4 +31,6 @@ return { json: {
   nota: link.nota || '',
   quien: link.quien,
   chatId: link.chatId,
+  cantidad: link.cantidad || 1,
+  sinConfirmar: !!link.sinConfirmar,
 } };

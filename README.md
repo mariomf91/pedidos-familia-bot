@@ -20,10 +20,15 @@ vivía — en la cuenta de Amazon de quien compra.
 Tu madre                Homelab (n8n)                         Mario
    │                          │                                │
    │── pega el enlace ───────▶│                                │
-   │◀─ "Anotado ✓ (n.º 7)" ───│                                │
+   │◀─ "Anotado ✓ (n.º 7).    │                                │
+   │    ¿Cuántas unidades?"   │                                │
+   │    [1][2][3][4][5]       │                                │
+   │── pulsa 2 ──────────────▶│                                │
+   │◀─ "✅ 2 unidades" ────────│                                │
    │                          │── resuelve el enlace corto ────│
    │                          │── lee la página del producto   │
-   │                          │── ficha con título y precio ──▶│
+   │                          │── ficha con título, precio     │
+   │                          │   y "×2 unidades" ───────────▶│
    │                          │   [✅ Pedir] [❌ Pasar]         │
    │                          │◀──────────── tap ✅ ────────────│
    │                          │── "abrir en Amazon →           │
@@ -33,9 +38,11 @@ Tu madre                Homelab (n8n)                         Mario
    │◀─ "🎉 ¡Hecho!" ───────────│                                │
 ```
 
-- **Quien pide** no necesita saber nada: Compartir → Copiar enlace → pegar.
-  Sin enlace también vale: escribe *"necesito detergente ACE familia"* y
-  llega como ficha de texto.
+- **Quien pide** no necesita saber nada: Compartir → Copiar enlace →
+  pegar → contestar con un toque cuántas unidades. Sin enlace también
+  vale: escribe *"necesito detergente ACE familia"* y llega como ficha
+  de texto. Si no contesta la cantidad en 10 minutos, el pedido se
+  procesa solo como 1 unidad sin confirmar — nada se queda frito.
 - **Quien aprueba** lo hace desde donde esté: dos toques (✅ antes de
   pagar, 📦 después) y un clic en «Comprar ya» de Amazon con la dirección
   y la tarjeta por defecto ya puestas.
@@ -73,7 +80,7 @@ lo pidió. Si olvidas el 📦 no pasa nada: el pedido queda simplemente como
 | Cada 30 segundos | Sondeo `getUpdates` (sin webhook: la instancia no es pública) |
 | Sondeo | Arranque del ciclo: offset + limpieza de registros viejos |
 | Leer novedades | HTTP → hasta 50 novedades |
-| Encaminar | El cerebro: clasifica mensajes y botones, responde, registra, deduplica callbacks |
+| Encaminar | El cerebro: clasifica mensajes y botones, pregunta las unidades, responde, registra, deduplica callbacks |
 | Es enlace | IF: los acuses van primero, los enlaces a la rama de lectura |
 | Resolver enlace | GET sin seguir redirects y con `fullResponse` — los enlaces cortos (`amzn.eu`) responden 301 con el ASIN en la cabecera |
 | Reapuntar | Con el ASIN, apunta a la URL **móvil** de Amazon (`/gp/aw/d/`) |

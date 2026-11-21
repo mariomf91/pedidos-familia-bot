@@ -105,8 +105,12 @@ if (precio) {
   if (n) precio = n[1].replace('.', ',') + ' €';
 }
 
-// Registro del pedido pendiente
+// Registro del pedido pendiente: se FUSIONA con lo apuntado cuando pidió
+// (el pendiente ya existía desde el "¿cuántas unidades?") para no perder
+// la cantidad ni la identidad de quien pidió.
+const previo = sd.pendientes[pid] || {};
 sd.pendientes[pid] = {
+  ...previo,
   pid, tipo: esAmazon ? 'amazon' : 'web',
   quien: link.quien, chatId: link.chatId,
   url: link.urlOriginal || link.url, asin, titulo, precio, foto,
@@ -126,6 +130,10 @@ if (asin) {
 const partes = ['🛒 n.º ' + pid + ' — de ' + esc(link.quien)];
 if (titulo) partes.push('📦 ' + esc(titulo));
 if (precio) partes.push('💶 ' + esc(precio) + ' (orientativo)');
+if (link.cantidad) {
+  partes.push('🔢 ' + link.cantidad + (link.cantidad === 1 ? ' unidad' : ' unidades') +
+    (link.sinConfirmar ? ' (sin confirmar)' : ''));
+}
 if (link.nota) partes.push('📝 «' + esc(link.nota) + '»');
 if (aviso) partes.push(aviso);
 partes.push('🛍️ <a href="' + escHref(link.urlOriginal || link.url) + '">ver producto</a>');
